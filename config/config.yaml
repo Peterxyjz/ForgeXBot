@@ -1,0 +1,62 @@
+# MT5 Configuration
+mt5:
+  # These can be overridden by environment variables:
+  #   MT5_LOGIN, MT5_PASSWORD, MT5_SERVER, MT5_PATH
+  login: 0 # (override via MT5_LOGIN)
+  password: "" # (override via MT5_PASSWORD)
+  server: "" # (override via MT5_SERVER)
+  # path: ""         # (override via MT5_PATH) let MT5 auto-detect if empty
+
+# Trading Symbols
+symbols:
+  - XAUUSD.s # Vàng
+  # - USDJPY.s   # USD/Yên Nhật
+  # - AUDUSD.s   # Đô Úc/USD
+
+# Timeframes to scan (in MT5 format)
+timeframes:
+  - M15 # 15 phút
+  - H1 # 1 giờ
+  - H4 # 4 giờ
+  - D1 # 1 ngày
+
+# Telegram Configuration
+telegram:
+  # These can be overridden by environment variables:
+  #   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+  bot_token: "" # (override via TELEGRAM_BOT_TOKEN)
+  chat_id: "" # (override via TELEGRAM_CHAT_ID)
+
+# Pattern Detection Settings
+patterns:
+  enabled:
+    - bullish_engulfing # Nến nhấn chìm tăng
+    - bearish_engulfing # Nến nhấn chìm giảm
+    - hammer # Búa
+    - shooting_star # Sao băng
+    - doji # Doji
+
+  # Pattern specific settings
+  doji_threshold: 0.1 # 10% body/range ratio for doji
+  hammer_shadow_ratio: 2.0 # Shadow must be 2x body
+  shooting_star_shadow_ratio: 2.0
+  min_strength: 0.6 # Tăng lên 60% để giảm tín hiệu nhiễu
+
+# System Settings
+system:
+  scan_interval: 60 # Quét mỗi 60 giây
+  alert_cooldown: 3600 # 1 giờ cooldown cho cùng một tín hiệu
+  log_level: INFO
+  timezone: "Asia/Ho_Chi_Minh" # Múi giờ Việt Nam
+
+  # Cache settings
+  cache_alerts: true
+  cache_expiry: 7200 # 2 giờ
+
+# Risk Management (optional for future enhancement)
+risk:
+  max_alerts_per_hour: 20
+  quiet_hours:
+    enabled: true
+    start: "23:00" # Không gửi alert từ 23h
+    end: "06:00" # đến 6h sáng

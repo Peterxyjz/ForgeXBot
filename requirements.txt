@@ -1,0 +1,20 @@
+# Core dependencies
+MetaTrader5==5.0.45
+pandas==2.0.3
+numpy==1.24.3
+pyyaml==6.0.1
+python-telegram-bot==20.3
+
+# Utilities
+python-dotenv==1.0.0
+colorlog==6.7.0
+schedule==1.2.0
+pytz==2023.3
+
+# Technical Analysis (optional - requires separate installation on Windows)
+# TA-Lib==0.4.28  # Uncomment if you have TA-Lib installed
+
+# Development (optional)
+pytest==7.4.0
+black==23.3.0
+flake8==6.0.0

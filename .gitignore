@@ -1,0 +1,121 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+build/
+dist/
+
+# Environments & secrets
+.env
+.env.local
+venv/
+env/
+
+# Logs
+logs/*.log
+logs/*.json
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Cache
+*.cache
+*.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+build/
+dist/
+
+# Environments & secrets
+.env
+.env.local
+venv/
+env/
+
+# Logs
+logs/*.log
+logs/*.json
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Cache
+*.cache
+*.tmp
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Logs
+logs/
+*.log
+alert_cache.json
+
+# Config with sensitive data
+config/config_prod.yaml
+config/config_local.yaml
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+docs/_build/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# log
+logs/
+*.log
+
+.json
