@@ -21,10 +21,10 @@ class Hammer(BasePattern):
         """
         Detect hammer pattern
         
-        Pattern criteria:
-        - Small body (less than 1/3 of total range)
-        - Long lower shadow (at least 2x the body)
-        - Little to no upper shadow
+        Pattern criteria (CORRECTED ALGORITHM):
+        - Small body: abs(Close[n] - Open[n]) <= (High[n] - Low[n]) * 0.25
+        - Long lower shadow: (min(Open[n], Close[n]) - Low[n]) >= 2 * abs(Close[n] - Open[n])
+        - Short upper shadow: (High[n] - max(Open[n], Close[n])) <= (High[n] - Low[n]) * 0.1
         - Typically appears after downtrend
         """
         if not self.validate_candles(candles):
@@ -42,23 +42,24 @@ class Hammer(BasePattern):
         if range_total == 0:
             return None
         
-        # Check hammer criteria
-        body_ratio = body / range_total if range_total > 0 else 0
-        shadow_ratio = self.config.get('hammer_shadow_ratio', 2.0)
+        # CORRECTED HAMMER ALGORITHM
+        body_ratio = body / range_total
         
-        # Small body (less than 1/3 of range)
-        if body_ratio > 0.33:
+        # 1. Small body: <= 25% of total range
+        if body_ratio > 0.25:
             return None
         
-        # Long lower shadow (at least 2x body)
+        # 2. Long lower shadow: >= 2 * body
         if body == 0:
+            # Special case: body is 0 (doji-like), lower shadow should be >= 60% of range
             if lower_shadow < range_total * 0.6:
                 return None
-        elif lower_shadow < body * shadow_ratio:
-            return None
+        else:
+            if lower_shadow < body * 2.0:
+                return None
         
-        # Small upper shadow (less than body)
-        if upper_shadow > body:
+        # 3. Short upper shadow: <= 10% of total range
+        if upper_shadow > range_total * 0.1:
             return None
         
         # Pattern detected
@@ -121,10 +122,10 @@ class ShootingStar(BasePattern):
         """
         Detect shooting star pattern
         
-        Pattern criteria:
-        - Small body (less than 1/3 of total range)
-        - Long upper shadow (at least 2x the body)
-        - Little to no lower shadow
+        Pattern criteria (CORRECTED ALGORITHM):
+        - Small body: abs(Close[n] - Open[n]) <= (High[n] - Low[n]) * 0.25
+        - Long upper shadow: (High[n] - max(Open[n], Close[n])) >= 2 * abs(Close[n] - Open[n])
+        - Short lower shadow: (min(Open[n], Close[n]) - Low[n]) <= (High[n] - Low[n]) * 0.1
         - Typically appears after uptrend
         """
         if not self.validate_candles(candles):
@@ -142,23 +143,24 @@ class ShootingStar(BasePattern):
         if range_total == 0:
             return None
         
-        # Check shooting star criteria
-        body_ratio = body / range_total if range_total > 0 else 0
-        shadow_ratio = self.config.get('shooting_star_shadow_ratio', 2.0)
+        # CORRECTED SHOOTING STAR ALGORITHM
+        body_ratio = body / range_total
         
-        # Small body (less than 1/3 of range)
-        if body_ratio > 0.33:
+        # 1. Small body: <= 25% of total range
+        if body_ratio > 0.25:
             return None
         
-        # Long upper shadow (at least 2x body)
+        # 2. Long upper shadow: >= 2 * body
         if body == 0:
+            # Special case: body is 0 (doji-like), upper shadow should be >= 60% of range
             if upper_shadow < range_total * 0.6:
                 return None
-        elif upper_shadow < body * shadow_ratio:
-            return None
+        else:
+            if upper_shadow < body * 2.0:
+                return None
         
-        # Small lower shadow (less than body)
-        if lower_shadow > body:
+        # 3. Short lower shadow: <= 10% of total range
+        if lower_shadow > range_total * 0.1:
             return None
         
         # Pattern detected

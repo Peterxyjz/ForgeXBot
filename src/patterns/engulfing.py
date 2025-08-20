@@ -41,13 +41,10 @@ class BullishEngulfing(BasePattern):
         if curr_candle['close'] <= curr_candle['open']:
             return None
         
-        # Check if current candle engulfs previous
-        prev_body_high = max(prev_candle['open'], prev_candle['close'])
-        prev_body_low = min(prev_candle['open'], prev_candle['close'])
-        curr_body_high = max(curr_candle['open'], curr_candle['close'])
-        curr_body_low = min(curr_candle['open'], curr_candle['close'])
-        
-        if curr_body_high > prev_body_high and curr_body_low < prev_body_low:
+        # Check if current candle engulfs previous - CORRECTED LOGIC
+        # Bullish Engulfing: Open[n] <= Close[n-1] AND Close[n] >= Open[n-1]
+        if (curr_candle['open'] <= prev_candle['close'] and 
+            curr_candle['close'] >= prev_candle['open']):
             # Pattern detected
             strength = self.calculate_strength(prev_candle, curr_candle)
             
@@ -126,13 +123,10 @@ class BearishEngulfing(BasePattern):
         if curr_candle['close'] >= curr_candle['open']:
             return None
         
-        # Check if current candle engulfs previous
-        prev_body_high = max(prev_candle['open'], prev_candle['close'])
-        prev_body_low = min(prev_candle['open'], prev_candle['close'])
-        curr_body_high = max(curr_candle['open'], curr_candle['close'])
-        curr_body_low = min(curr_candle['open'], curr_candle['close'])
-        
-        if curr_body_high > prev_body_high and curr_body_low < prev_body_low:
+        # Check if current candle engulfs previous - CORRECTED LOGIC
+        # Bearish Engulfing: Open[n] >= Close[n-1] AND Close[n] <= Open[n-1]
+        if (curr_candle['open'] >= prev_candle['close'] and 
+            curr_candle['close'] <= prev_candle['open']):
             # Pattern detected
             strength = self.calculate_strength(prev_candle, curr_candle)
             
