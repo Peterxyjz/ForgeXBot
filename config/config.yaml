@@ -37,10 +37,11 @@ patterns:
     - doji # Doji
 
   # Pattern specific settings
-  doji_threshold: 0.1 # 10% body/range ratio for doji
-  hammer_shadow_ratio: 2.0 # Shadow must be 2x body
-  shooting_star_shadow_ratio: 2.0
+  doji_threshold: 0.1 # 10% body/range ratio for doji (unchanged)
   min_strength: 0.6 # Tăng lên 60% để giảm tín hiệu nhiễu
+  
+  # NOTE: hammer_shadow_ratio and shooting_star_shadow_ratio removed
+  # Algorithm now uses fixed 25% body threshold and 10% shadow limits
 
 # System Settings
 system:

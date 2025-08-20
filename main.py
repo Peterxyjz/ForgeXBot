@@ -50,6 +50,12 @@ class PriceActionBot:
         # Track last candle times for each symbol-timeframe pair
         self.last_candle_times = {}
         
+        # Runtime statistics
+        self.start_time = None
+        self.scan_count = 0
+        self.total_patterns = 0
+        self.total_alerts = 0
+        
         self._initialize_components()
         
         # Setup signal handlers
@@ -96,6 +102,10 @@ class PriceActionBot:
     def _signal_handler(self, signum, frame):
         """Handle shutdown signals"""
         logger.info(f"Received signal {signum}, shutting down...")
+        # Send shutdown notification with statistics
+        if self.telegram_notifier:
+            runtime_stats = self._get_runtime_statistics()
+            self.telegram_notifier.send_shutdown_notification_sync(runtime_stats)
         self.stop()
     
     def connect(self) -> bool:
@@ -318,19 +328,21 @@ class PriceActionBot:
             return
         
         self.running = True
+        self.start_time = datetime.now()  # Track start time
         
         logger.info(f"Bot started - Waiting for candles to close...")
         logger.info(f"Monitoring symbols: {self.config.get('symbols')}")
         logger.info(f"Timeframes: {self.config.get('timeframes')}")
         logger.info(f"Patterns: {self.pattern_manager.get_enabled_patterns()}")
         
-        scan_count = 0
-        total_patterns = 0
-        total_alerts = 0
+        # Use instance variables for statistics
+        self.scan_count = 0
+        self.total_patterns = 0
+        self.total_alerts = 0
         
         while self.running:
             try:
-                scan_count += 1
+                self.scan_count += 1
                 
                 # Scan for newly closed candles
                 patterns = self.scan_for_closed_candles()
@@ -343,14 +355,14 @@ class PriceActionBot:
                     # Process and send alerts
                     alerts_sent = self.process_patterns(patterns)
                     
-                    total_patterns += len(patterns)
-                    total_alerts += alerts_sent
+                    self.total_patterns += len(patterns)
+                    self.total_alerts += alerts_sent
                     
                     logger.info(f"📤 Alerts sent: {alerts_sent}")
                 
                 # Show running statistics every 10 scans
-                if scan_count % 10 == 0:
-                    logger.info(f"📊 Stats - Scans: {scan_count}, Patterns: {total_patterns}, Alerts: {total_alerts}")
+                if self.scan_count % 10 == 0:
+                    logger.info(f"📊 Stats - Scans: {self.scan_count}, Patterns: {self.total_patterns}, Alerts: {self.total_alerts}")
                 
                 # Calculate optimal wait time until next candle close
                 wait_time = self.calculate_next_check_time()
@@ -362,6 +374,10 @@ class PriceActionBot:
                 
             except KeyboardInterrupt:
                 logger.info("Keyboard interrupt received")
+                # Send shutdown notification with statistics
+                if self.telegram_notifier:
+                    runtime_stats = self._get_runtime_statistics()
+                    self.telegram_notifier.send_shutdown_notification_sync(runtime_stats)
                 break
                 
             except Exception as e:
@@ -370,6 +386,29 @@ class PriceActionBot:
                 time.sleep(30)
         
         self.stop()
+    
+    def _get_runtime_statistics(self) -> Dict[str, Any]:
+        """
+        Get runtime statistics for shutdown notification
+        
+        Returns:
+            Dictionary with runtime stats
+        """
+        if self.start_time:
+            runtime_duration = datetime.now() - self.start_time
+            # Format duration as hours:minutes
+            hours, remainder = divmod(int(runtime_duration.total_seconds()), 3600)
+            minutes, _ = divmod(remainder, 60)
+            runtime_str = f"{hours}h {minutes}m"
+        else:
+            runtime_str = "N/A"
+        
+        return {
+            'total_scans': self.scan_count,
+            'total_patterns': self.total_patterns,
+            'total_alerts': self.total_alerts,
+            'runtime': runtime_str
+        }
     
     def stop(self):
         """Stop the bot and cleanup"""

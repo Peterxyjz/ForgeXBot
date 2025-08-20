@@ -145,9 +145,16 @@ class TelegramNotifier:
         strength = pattern.get('strength', 0)
         candle_time = pattern.get('candle_time')
         
-        # Format timestamp
+        # Format timestamp with Vietnam timezone
         if isinstance(candle_time, datetime):
-            timestamp = candle_time.strftime('%H:%M %d/%m/%Y')
+            # Convert to Vietnam timezone if not already localized
+            if candle_time.tzinfo is None:
+                # Assume UTC if no timezone info
+                candle_time = pytz.UTC.localize(candle_time)
+            
+            # Convert to Vietnam timezone
+            vietnam_time = candle_time.astimezone(self.timezone)
+            timestamp = vietnam_time.strftime('%H:%M %d/%m/%Y')
         else:
             timestamp = str(candle_time)
         
@@ -317,7 +324,12 @@ class TelegramNotifier:
             # Send test message in Vietnamese
             await self.bot.send_message(
                 chat_id=self.chat_id,
-                text="🤖 *Bot Price Action đã sẵn sàng!*\n\n✅ Kết nối thành công\n📊 Bắt đầu quét thị trường..."
+                text=(
+                    "💠 *ForgeX Bot v0.0.1 đã sẵn sàng!* 🤖\n\n"
+                    "✅ *Kết nối:* Thành công\n"
+                    "📊 *Trạng thái:* Đang bắt đầu quét thị trường..."
+                ),
+                parse_mode="Markdown"
             )
             
             return True
@@ -335,3 +347,67 @@ class TelegramNotifier:
             asyncio.set_event_loop(loop)
         
         return loop.run_until_complete(self.test_connection())
+    
+    async def send_shutdown_notification(self, stats: Dict[str, Any] = None) -> bool:
+        """
+        Send bot shutdown notification in Vietnamese
+        
+        Args:
+            stats: Optional runtime statistics
+            
+        Returns:
+            bool: Success status
+        """
+        if not self.bot:
+            return False
+        
+        try:
+            # Get current Vietnam time for shutdown notification
+            shutdown_time = datetime.now(self.timezone)
+            formatted_time = shutdown_time.strftime('%H:%M - %d/%m/%Y')
+            
+            message = f"""🔴 *ForgeX Bot v0.0.1 đã dừng hoạt động* 
+
+⏰ *Thời gian dừng:* {formatted_time}
+📊 *Trạng thái:* Bot đã bị tắt
+"""
+            
+            # Add runtime statistics if provided
+            if stats:
+                total_scans = stats.get('total_scans', 0)
+                total_patterns = stats.get('total_patterns', 0)
+                total_alerts = stats.get('total_alerts', 0)
+                runtime = stats.get('runtime', 'N/A')
+                
+                message += f"""
+📈 *Thống kê phiên làm việc:*
+• Số lần quét: {total_scans}
+• Patterns phát hiện: {total_patterns}
+• Alerts đã gửi: {total_alerts}
+• Thời gian hoạt động: {runtime}
+"""
+            
+            message += "\n✋ *Cảm ơn bạn đã sử dụng ForgeX Bot!*"
+            
+            await self.bot.send_message(
+                chat_id=self.chat_id,
+                text=message,
+                parse_mode='Markdown'
+            )
+            
+            logger.info("Shutdown notification sent successfully")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error sending shutdown notification: {e}")
+            return False
+    
+    def send_shutdown_notification_sync(self, stats: Dict[str, Any] = None) -> bool:
+        """Synchronous wrapper for send_shutdown_notification"""
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        return loop.run_until_complete(self.send_shutdown_notification(stats))
