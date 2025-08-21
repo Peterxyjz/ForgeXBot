@@ -50,7 +50,7 @@ def setup_logger(
     # Format for file logs
     file_formatter = logging.Formatter(
         '%(asctime)s | %(levelname)-8s | %(name)s | %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        datefmt='%Y-%m-%d - %H:%M:%S'
     )
     
     # Format for console logs (with colors if available)
@@ -118,7 +118,7 @@ def get_logger(module: str, level: str = "INFO") -> logging.Logger:
 
     formatter = logging.Formatter(
         '%(asctime)s | %(levelname)-8s | %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        datefmt='%Y-%m-%d - %H:%M:%S'
     )
 
     file_handler = RotatingFileHandler(

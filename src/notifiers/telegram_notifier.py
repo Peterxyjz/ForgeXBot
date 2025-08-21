@@ -1,6 +1,6 @@
 """
 Telegram Notifier
-Sends trading alerts via Telegram Bot API in Vietnamese
+Sends trading alerts via Telegram Bot API in Vietnamese with Enhanced Context Support
 """
 
 import asyncio
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class TelegramNotifier:
-    """Telegram notification handler"""
+    """Telegram notification handler with enhanced pattern support"""
     
     def __init__(self, config: Dict[str, Any]):
         """
@@ -37,7 +37,7 @@ class TelegramNotifier:
         Send pattern alert to Telegram
         
         Args:
-            pattern: Pattern detection result
+            pattern: Pattern detection result (basic or enhanced)
             
         Returns:
             bool: Success status
@@ -131,7 +131,120 @@ class TelegramNotifier:
         Format pattern alert message in Vietnamese
         
         Args:
-            pattern: Pattern detection result
+            pattern: Pattern detection result (basic or enhanced)
+            
+        Returns:
+            Formatted message string
+        """
+        # Check if this is an enhanced pattern
+        if 'trend_context' in pattern and 'ema_context' in pattern:
+            return self._format_enhanced_alert_message(pattern)
+        
+        # Use basic formatting for regular patterns
+        return self._format_basic_alert_message(pattern)
+    
+    def _format_enhanced_alert_message(self, pattern: Dict[str, Any]) -> str:
+        """
+        Format enhanced pattern alert message with context
+        
+        Args:
+            pattern: Enhanced pattern with context
+            
+        Returns:
+            Formatted message string
+        """
+        # Get basic pattern info
+        pattern_name = pattern.get('pattern', 'Unknown')
+        symbol = pattern.get('symbol', 'Unknown')
+        timeframe = pattern.get('timeframe', 'Unknown')
+        
+        # Vietnamese pattern names
+        pattern_names_vn = {
+            'Bullish Engulfing': 'Nến Nhấn Chìm Tăng',
+            'Bearish Engulfing': 'Nến Nhấn Chìm Giảm',
+            'Hammer': 'Búa (Hammer)',
+            'Shooting Star': 'Sao Băng (Shooting Star)',
+            'Doji': 'Doji'
+        }
+        pattern_name_vn = pattern_names_vn.get(pattern_name, pattern_name)
+        
+        # Context information
+        trend_context = pattern.get('trend_context', {})
+        classification = pattern.get('classification', 'neutral')
+        sr_context = pattern.get('sr_context', {})
+        ema_context = pattern.get('ema_context', {})
+        
+        # Trend direction in Vietnamese
+        trend_vn = {
+            'uptrend': 'Xu hướng tăng',
+            'downtrend': 'Xu hướng giảm',
+            'sideways': 'Đi ngang',
+            'unknown': 'Không rõ'
+        }.get(trend_context.get('direction', 'unknown'), 'Không rõ')
+        
+        # Classification in Vietnamese
+        classification_vn = {
+            'trend_continuation': 'Tiếp tục xu hướng',
+            'trend_reversal': 'Đảo chiều xu hướng',
+            'range_trading': 'Giao dịch trong vùng',
+            'neutral': 'Trung lập'
+        }.get(classification, 'Trung lập')
+        
+        # Get signal header
+        signal_header = self._get_enhanced_signal_header(pattern)
+        
+        # Build enhanced message
+        message = f"""🚨 *CẢNH BÁO PRICE ACTION* 🚨
+
+{signal_header}
+
+📊 *Thông tin cơ bản:*
+• Cặp tiền: {symbol.replace('.s', '')}
+• Khung thời gian: {self._get_timeframe_vn(timeframe)}
+• Mô hình: {pattern_name_vn}
+• Giá đóng: {pattern.get('candle_close', 0):.5f}
+
+🎯 *Phân tích ngữ cảnh:*
+• Xu hướng: {trend_vn} (Độ mạnh: {trend_context.get('strength', 0):.0%})
+• Phân loại: {classification_vn}
+• Độ tin cậy: {trend_context.get('confidence', 0):.0%}
+
+📈 *Vị trí EMA:*
+• Giá vs EMA20: {'Trên' if ema_context.get('price_above_ema20') else 'Dưới'}
+• Giá vs EMA50: {'Trên' if ema_context.get('price_above_ema50') else 'Dưới'}
+• Khoảng cách EMA20: {ema_context.get('distance_from_ema20', 0):.2%}"""
+        
+        # Add S/R context if relevant
+        if sr_context.get('near_resistance') or sr_context.get('near_support'):
+            message += "\n\n🎯 *Hỗ trợ/Kháng cự:*"
+            if sr_context.get('near_resistance'):
+                resistance = sr_context.get('nearest_resistance', {})
+                message += f"\n• Gần kháng cự: {resistance.get('price', 0):.5f}"
+            if sr_context.get('near_support'):
+                support = sr_context.get('nearest_support', {})
+                message += f"\n• Gần hỗ trợ: {support.get('price', 0):.5f}"
+        
+        # Add strength information
+        original_strength = pattern.get('original_strength', pattern.get('strength', 0))
+        enhanced_strength = pattern.get('enhanced_strength', pattern.get('strength', 0))
+        
+        message += f"""\n\n💪 *Độ mạnh tín hiệu:*
+• Cơ bản: {original_strength:.0%}
+• Nâng cao: {enhanced_strength:.0%}"""
+        
+        # Add timestamp
+        timestamp = self._format_timestamp(pattern.get('candle_time'))
+        message += f"\n\n⏱ *Thời gian:* {timestamp}"
+        message += "\n\n✅ _Tín hiệu đã được xác nhận với ngữ cảnh thị trường_"
+        
+        return message
+    
+    def _format_basic_alert_message(self, pattern: Dict[str, Any]) -> str:
+        """
+        Format basic pattern alert message (original format)
+        
+        Args:
+            pattern: Basic pattern detection result
             
         Returns:
             Formatted message string
@@ -144,19 +257,6 @@ class TelegramNotifier:
         candle_close = pattern.get('candle_close', 0)
         strength = pattern.get('strength', 0)
         candle_time = pattern.get('candle_time')
-        
-        # Format timestamp with Vietnam timezone
-        if isinstance(candle_time, datetime):
-            # Convert to Vietnam timezone if not already localized
-            if candle_time.tzinfo is None:
-                # Assume UTC if no timezone info
-                candle_time = pytz.UTC.localize(candle_time)
-            
-            # Convert to Vietnam timezone
-            vietnam_time = candle_time.astimezone(self.timezone)
-            timestamp = vietnam_time.strftime('%H:%M %d/%m/%Y')
-        else:
-            timestamp = str(candle_time)
         
         # Translate pattern names to Vietnamese
         pattern_names_vn = {
@@ -197,12 +297,7 @@ class TelegramNotifier:
         clean_symbol = symbol.replace('.s', '')
         
         # Format timeframe
-        timeframe_vn = {
-            'M15': '15 phút',
-            'H1': '1 giờ',
-            'H4': '4 giờ',
-            'D1': '1 ngày'
-        }.get(timeframe, timeframe)
+        timeframe_vn = self._get_timeframe_vn(timeframe)
         
         # Create message
         message = f"""🚨 *CẢNH BÁO PRICE ACTION* 🚨
@@ -216,7 +311,7 @@ class TelegramNotifier:
 💪 *Độ mạnh tín hiệu:* {strength:.0%}
 
 📝 *Ghi chú:* {trend_note}
-⏱ *Thời gian:* {timestamp}
+⏱ *Thời gian:* {self._format_timestamp(candle_time)}
 
 ✅ _Nến đã đóng - Tín hiệu đã xác nhận_"""
         
@@ -236,6 +331,51 @@ class TelegramNotifier:
             )
         
         return message.strip()
+    
+    def _get_enhanced_signal_header(self, pattern: Dict[str, Any]) -> str:
+        """Get enhanced signal header based on pattern type and classification"""
+        pattern_type = pattern.get('type', 'neutral')
+        classification = pattern.get('classification', 'neutral')
+        
+        if pattern_type == 'bullish':
+            if classification == 'trend_continuation':
+                return "🟢📈 *TÍN HIỆU TĂNG MẠNH* (Tiếp tục xu hướng)"
+            elif classification == 'trend_reversal':
+                return "🟡📈 *TÍN HIỆU ĐẢO CHIỀU TĂNG* (Cần xác nhận)"
+            else:
+                return "🟢📈 *TÍN HIỆU TĂNG*"
+        elif pattern_type == 'bearish':
+            if classification == 'trend_continuation':
+                return "🔴📉 *TÍN HIỆU GIẢM MẠNH* (Tiếp tục xu hướng)"
+            elif classification == 'trend_reversal':
+                return "🟡📉 *TÍN HIỆU ĐẢO CHIỀU GIẢM* (Cần xác nhận)"
+            else:
+                return "🔴📉 *TÍN HIỆU GIẢM*"
+        else:
+            return "⚪️ *TÍN HIỆU TRUNG LẬP*"
+    
+    def _get_timeframe_vn(self, timeframe: str) -> str:
+        """Convert timeframe to Vietnamese"""
+        return {
+            'M15': '15 phút',
+            'H1': '1 giờ',
+            'H4': '4 giờ',
+            'D1': '1 ngày'
+        }.get(timeframe, timeframe)
+    
+    def _format_timestamp(self, candle_time) -> str:
+        """Format timestamp with Vietnam timezone"""
+        if isinstance(candle_time, datetime):
+            # Convert to Vietnam timezone if not already localized
+            if candle_time.tzinfo is None:
+                # Assume UTC if no timezone info
+                candle_time = pytz.UTC.localize(candle_time)
+            
+            # Convert to Vietnam timezone
+            vietnam_time = candle_time.astimezone(self.timezone)
+            return vietnam_time.strftime('%H:%M - %d/%m/%Y')
+        else:
+            return str(candle_time) if candle_time else 'N/A'
     
     def _get_pattern_emoji(self, pattern_type: str) -> str:
         """Get emoji for pattern type"""
@@ -325,9 +465,10 @@ class TelegramNotifier:
             await self.bot.send_message(
                 chat_id=self.chat_id,
                 text=(
-                    "💠 *ForgeX Bot v0.0.1 đã sẵn sàng!* 🤖\n\n"
+                    "💠 *ForgeX Bot v0.0.2 đã sẵn sàng!* 🤖\n\n"
                     "✅ *Kết nối:* Thành công\n"
-                    "📊 *Trạng thái:* Đang bắt đầu quét thị trường..."
+                    "📊 *Trạng thái:* Đang bắt đầu quét thị trường...\n"
+                    "🚀 *Tính năng mới:* Phân tích ngữ cảnh nâng cao"
                 ),
                 parse_mode="Markdown"
             )
@@ -366,10 +507,10 @@ class TelegramNotifier:
             shutdown_time = datetime.now(self.timezone)
             formatted_time = shutdown_time.strftime('%H:%M - %d/%m/%Y')
             
-            message = f"""🔴 *ForgeX Bot v0.0.1 đã dừng hoạt động* 
+            message = f"""🔴 *ForgeX Bot v0.0.2 đã dừng hoạt động* 🛑
 
 ⏰ *Thời gian dừng:* {formatted_time}
-📊 *Trạng thái:* Bot đã bị tắt
+📊 *Trạng thái:* Bot đã ngắt kết nối khỏi thị trường
 """
             
             # Add runtime statistics if provided

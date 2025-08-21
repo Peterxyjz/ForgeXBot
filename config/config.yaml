@@ -39,9 +39,38 @@ patterns:
   # Pattern specific settings
   doji_threshold: 0.1 # 10% body/range ratio for doji (unchanged)
   min_strength: 0.6 # Tăng lên 60% để giảm tín hiệu nhiễu
+  min_enhanced_strength: 0.4 # Ngưỡng tối thiểu cho enhanced patterns
   
   # NOTE: hammer_shadow_ratio and shooting_star_shadow_ratio removed
   # Algorithm now uses fixed 25% body threshold and 10% shadow limits
+
+# Enhanced Analysis Settings (NEW)
+analysis:
+  # Enable enhanced pattern detection with context
+  enable_enhanced_mode: true
+  
+  # Trend Analysis
+  trend:
+    ema_short_period: 20
+    ema_long_period: 50
+    trend_strength_threshold: 0.0001  # 0.01%
+    sideways_threshold: 0.0005       # 0.05%
+  
+  # Support/Resistance Analysis  
+  support_resistance:
+    sr_lookback_periods: 20
+    sr_min_touches: 2
+    sr_proximity_threshold: 0.001    # 0.1%
+  
+  # Context Filtering
+  enable_trend_filtering: true
+  enable_sr_filtering: true
+  allow_reversal_patterns: true
+  reversal_pattern_names:
+    - hammer
+    - shooting_star
+    - bullish_engulfing
+    - bearish_engulfing
 
 # System Settings
 system:

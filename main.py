@@ -14,6 +14,7 @@ from src.utils.config_loader import load_config as unified_load_config
 
 from src.connectors.mt5_connector import MT5Connector
 from src.patterns.pattern_manager import PatternManager
+from src.analysis.enhanced_pattern_manager import EnhancedPatternManager
 from src.notifiers.telegram_notifier import TelegramNotifier
 from src.utils.alert_cache import AlertCache
 from src.utils.logger import setup_logger
@@ -78,8 +79,16 @@ class PriceActionBot:
             # Initialize MT5 connector
             self.mt5_connector = MT5Connector(self.config.get('mt5', {}))
             
-            # Initialize pattern manager
-            self.pattern_manager = PatternManager(self.config)
+            # Initialize pattern manager (enhanced or basic)
+            analysis_config = self.config.get('analysis', {})
+            if analysis_config.get('enable_enhanced_mode', False):
+                self.pattern_manager = EnhancedPatternManager(self.config)
+                self.enhanced_mode = True
+                logger.info("Enhanced pattern detection mode enabled")
+            else:
+                self.pattern_manager = PatternManager(self.config)
+                self.enhanced_mode = False
+                logger.info("Basic pattern detection mode enabled")
             
             # Initialize Telegram notifier
             telegram_config = self.config.get('telegram', {})
@@ -225,12 +234,16 @@ class PriceActionBot:
                     if self.is_new_candle(symbol, timeframe):
                         logger.info(f"🕯️ New {timeframe} candle closed for {symbol}, scanning patterns...")
                         
-                        # Get candles for pattern detection
-                        candles = self.mt5_connector.get_candles(symbol, timeframe, count=100)
+                        # Get candles for pattern detection (more for enhanced mode)
+                        candle_count = 100 if not hasattr(self, 'enhanced_mode') else 150
+                        candles = self.mt5_connector.get_candles(symbol, timeframe, count=candle_count)
                         
                         if candles is not None and not candles.empty:
-                            # Scan for patterns
-                            patterns = self.pattern_manager.scan_patterns(candles, symbol, timeframe)
+                            # Use enhanced or basic pattern scanning
+                            if hasattr(self, 'enhanced_mode') and self.enhanced_mode:
+                                patterns = self.pattern_manager.scan_patterns_with_context(candles, symbol, timeframe)
+                            else:
+                                patterns = self.pattern_manager.scan_patterns(candles, symbol, timeframe)
                             
                             if patterns:
                                 logger.info(f"✅ Found {len(patterns)} patterns on {symbol} {timeframe}")
