@@ -1,6 +1,6 @@
 """
-Telegram Notifier
-Sends trading alerts via Telegram Bot API in Vietnamese with Enhanced Context Support
+Telegram Notifier - IMPROVED VERSION
+Sends concise, actionable trading alerts via Telegram
 """
 
 import asyncio
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class TelegramNotifier:
-    """Telegram notification handler with enhanced pattern support"""
+    """Telegram notification handler with improved alert format"""
     
     def __init__(self, config: Dict[str, Any]):
         """
@@ -85,50 +85,9 @@ class TelegramNotifier:
         
         return loop.run_until_complete(self.send_alert(pattern))
     
-    async def send_batch_alerts(self, patterns: List[Dict[str, Any]]) -> int:
-        """
-        Send multiple alerts
-        
-        Args:
-            patterns: List of pattern detection results
-            
-        Returns:
-            Number of successful sends
-        """
-        if not patterns:
-            return 0
-        
-        success_count = 0
-        
-        for pattern in patterns:
-            if await self.send_alert(pattern):
-                success_count += 1
-                # Add small delay to avoid rate limiting
-                await asyncio.sleep(0.5)
-        
-        return success_count
-    
-    def send_batch_alerts_sync(self, patterns: List[Dict[str, Any]]) -> int:
-        """
-        Synchronous wrapper for send_batch_alerts
-        
-        Args:
-            patterns: List of pattern detection results
-            
-        Returns:
-            Number of successful sends
-        """
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        
-        return loop.run_until_complete(self.send_batch_alerts(patterns))
-    
     def _format_alert_message(self, pattern: Dict[str, Any]) -> str:
         """
-        Format pattern alert message in Vietnamese
+        Format pattern alert message - IMPROVED VERSION
         
         Args:
             pattern: Pattern detection result (basic or enhanced)
@@ -145,7 +104,7 @@ class TelegramNotifier:
     
     def _format_enhanced_alert_message(self, pattern: Dict[str, Any]) -> str:
         """
-        Format enhanced pattern alert message with context
+        Format enhanced pattern alert message - CONCISE & ACTIONABLE
         
         Args:
             pattern: Enhanced pattern with context
@@ -158,12 +117,12 @@ class TelegramNotifier:
         symbol = pattern.get('symbol', 'Unknown')
         timeframe = pattern.get('timeframe', 'Unknown')
         
-        # Vietnamese pattern names
+        # Vietnamese pattern names (shorter)
         pattern_names_vn = {
             'Bullish Engulfing': 'Nến Nhấn Chìm Tăng',
             'Bearish Engulfing': 'Nến Nhấn Chìm Giảm',
-            'Hammer': 'Búa (Hammer)',
-            'Shooting Star': 'Sao Băng (Shooting Star)',
+            'Hammer': 'Búa',
+            'Shooting Star': 'Sao Băng',
             'Doji': 'Doji'
         }
         pattern_name_vn = pattern_names_vn.get(pattern_name, pattern_name)
@@ -174,74 +133,195 @@ class TelegramNotifier:
         sr_context = pattern.get('sr_context', {})
         ema_context = pattern.get('ema_context', {})
         
-        # Trend direction in Vietnamese
-        trend_vn = {
-            'uptrend': 'Xu hướng tăng',
-            'downtrend': 'Xu hướng giảm',
-            'sideways': 'Đi ngang',
-            'unknown': 'Không rõ'
-        }.get(trend_context.get('direction', 'unknown'), 'Không rõ')
-        
-        # Classification in Vietnamese
-        classification_vn = {
-            'trend_continuation': 'Tiếp tục xu hướng',
-            'trend_reversal': 'Đảo chiều xu hướng',
-            'range_trading': 'Giao dịch trong vùng',
-            'neutral': 'Trung lập'
-        }.get(classification, 'Trung lập')
+        # Get concise analyses
+        trend_analysis = self._get_concise_trend_analysis(trend_context)
+        ema_analysis = self._get_concise_ema_analysis(ema_context)
         
         # Get signal header
         signal_header = self._get_enhanced_signal_header(pattern)
         
-        # Build enhanced message
-        message = f"""🚨 *CẢNH BÁO PRICE ACTION* 🚨
+        # Format price (2 decimals for gold, appropriate for others)
+        price = pattern.get('candle_close', 0)
+        if 'XAU' in symbol.upper():
+            price_str = f"{price:.2f}"
+        else:
+            price_str = f"{price:.5f}"
+        
+        # Build enhanced message with traditional basic info section
+        message = f"""🚨 *PRICE ACTION ALERT* 🚨
 
 {signal_header}
 
-📊 *Thông tin cơ bản:*
+📊 **Thông tin cơ bản:**
 • Cặp tiền: {symbol.replace('.s', '')}
 • Khung thời gian: {self._get_timeframe_vn(timeframe)}
 • Mô hình: {pattern_name_vn}
-• Giá đóng: {pattern.get('candle_close', 0):.5f}
+• Giá đóng: {price_str}
 
-🎯 *Phân tích ngữ cảnh:*
-• Xu hướng: {trend_vn} (Độ mạnh: {trend_context.get('strength', 0):.0%})
-• Phân loại: {classification_vn}
-• Độ tin cậy: {trend_context.get('confidence', 0):.0%}
-
-📈 *Vị trí EMA:*
-• Giá vs EMA20: {'Trên' if ema_context.get('price_above_ema20') else 'Dưới'}
-• Giá vs EMA50: {'Trên' if ema_context.get('price_above_ema50') else 'Dưới'}
-• Khoảng cách EMA20: {ema_context.get('distance_from_ema20', 0):.2%}"""
+{trend_analysis}
+{ema_analysis}"""
         
-        # Add S/R context if relevant
-        if sr_context.get('near_resistance') or sr_context.get('near_support'):
-            message += "\n\n🎯 *Hỗ trợ/Kháng cự:*"
-            if sr_context.get('near_resistance'):
-                resistance = sr_context.get('nearest_resistance', {})
-                message += f"\n• Gần kháng cự: {resistance.get('price', 0):.5f}"
-            if sr_context.get('near_support'):
-                support = sr_context.get('nearest_support', {})
-                message += f"\n• Gần hỗ trợ: {support.get('price', 0):.5f}"
+        # Always add S/R context
+        sr_info = self._get_concise_sr_info(sr_context)
+        message += sr_info
         
-        # Add strength information
-        original_strength = pattern.get('original_strength', pattern.get('strength', 0))
-        enhanced_strength = pattern.get('enhanced_strength', pattern.get('strength', 0))
-        
-        message += f"""\n\n💪 *Độ mạnh tín hiệu:*
-• Cơ bản: {original_strength:.0%}
-• Nâng cao: {enhanced_strength:.0%}"""
+        # Add strength explanation
+        strength_explanation = self._get_strength_explanation(pattern)
+        message += f"\n\n{strength_explanation}"
         
         # Add timestamp
         timestamp = self._format_timestamp(pattern.get('candle_time'))
-        message += f"\n\n⏱ *Thời gian:* {timestamp}"
-        message += "\n\n✅ _Tín hiệu đã được xác nhận với ngữ cảnh thị trường_"
+        message += f"\n\n⏱ Thời gian: {timestamp}"
         
         return message
     
+    def _get_concise_trend_analysis(self, trend_context: Dict) -> str:
+        """
+        Get concise trend analysis with clear conclusion
+        
+        Args:
+            trend_context: Trend information
+            
+        Returns:
+            Concise trend analysis string
+        """
+        trend_direction = trend_context.get('direction', 'unknown')
+        trend_strength = trend_context.get('strength', 0)
+        
+        # Trend conclusion with strength levels
+        if trend_direction == 'uptrend':
+            if trend_strength > 0.7:
+                return "🎯 **Xu hướng: Mạnh Tăng \n**"
+            elif trend_strength > 0.4:
+                return "🎯 **Xu hướng: Vừa Tăng \n**"
+            else:
+                return "🎯 **Xu hướng: Yếu Tăng \n**"
+        elif trend_direction == 'downtrend':
+            if trend_strength > 0.7:
+                return "🎯 **Xu hướng: Mạnh Giảm \n**"
+            elif trend_strength > 0.4:
+                return "🎯 **Xu hướng: Vừa Giảm \n**"
+            else:
+                return "🎯 **Xu hướng: Yếu Giảm \n**"
+        else:
+            return "🎯 **Xu hướng: Đi ngang \n**"
+
+    def _get_concise_ema_analysis(self, ema_context: Dict) -> str:
+        """
+        Get concise EMA analysis with clear bias
+        
+        Args:
+            ema_context: EMA position information
+            
+        Returns:
+            Concise EMA analysis string
+        """
+        price_above_ema20 = ema_context.get('price_above_ema20', False)
+        price_above_ema50 = ema_context.get('price_above_ema50', False)
+        ema20_above_ema50 = ema_context.get('ema20_above_ema50', False)
+        
+        # EMA bias conclusion
+        if price_above_ema20 and price_above_ema50 and ema20_above_ema50:
+            return "💎 **EMA: Ưu thế Tăng \n**"
+        elif not price_above_ema20 and not price_above_ema50 and not ema20_above_ema50:
+            return "💎 **EMA: Ưu thế Giảm \n**"
+        else:
+            return "💎 **EMA: Trung lập \n**"
+
+    def _get_concise_sr_info(self, sr_context: Dict) -> str:
+        """
+        Get concise S/R information - ALWAYS SHOW nearest levels (vertical format)
+        
+        Args:
+            sr_context: Support/resistance context
+            
+        Returns:
+            S/R information string (always present)
+        """
+        lines = ["\n **🎯 Hỗ trợ/Kháng cự:**"]
+        
+        # Always show nearest resistance if available
+        if sr_context.get('nearest_resistance'):
+            resistance = sr_context.get('nearest_resistance', {})
+            price = resistance.get('price', 0)
+            if sr_context.get('near_resistance'):
+                lines.append(f"🔴 **Kháng cự**: {price:.2f} (Gần)")
+            else:
+                lines.append(f"🔴 **Kháng cự**: {price:.2f}")
+        
+        # Always show nearest support if available
+        if sr_context.get('nearest_support'):
+            support = sr_context.get('nearest_support', {})
+            price = support.get('price', 0)
+            if sr_context.get('near_support'):
+                lines.append(f"🟢 **Hỗ trợ:** {price:.2f} (Gần)")
+            else:
+                lines.append(f"🟢 **Hỗ trợ:** {price:.2f}")
+        
+        # If no S/R levels found, show placeholder
+        if len(lines) == 1:  # Only header
+            lines.append("🟡 Chưa xác định S/R")
+        
+        return "\n".join(lines)
+    
+    def _get_strength_explanation(self, pattern: Dict) -> str:
+        """
+        Get clear strength explanation
+        
+        Args:
+            pattern: Pattern with strength data
+            
+        Returns:
+            Clear strength explanation
+        """
+        original_strength = pattern.get('original_strength', 0)
+        enhanced_strength = pattern.get('enhanced_strength', 0)
+        classification = pattern.get('classification', 'neutral')
+        
+        # Strength descriptions
+        original_desc = self._get_strength_description(original_strength)
+        enhanced_desc = self._get_strength_description(enhanced_strength)
+        
+        # Classification impact note
+        if classification == 'trend_continuation':
+            context_note = "(Thuận xu hướng +)"
+        elif classification == 'trend_reversal':
+            context_note = "(Đảo chiều - cần xác nhận)"
+        elif classification == 'range_trading':
+            context_note = "(Trong vùng giá)"
+        else:
+            context_note = ""
+        
+        return f"""💪 **Độ mạnh tín hiệu:**
+• **Pattern gốc:** {original_strength:.0%} ({original_desc})
+• **Sau phân tích:** {enhanced_strength:.0%} ({enhanced_desc}) {context_note}"""
+    
+    def _get_strength_description(self, strength: float) -> str:
+        """
+        Convert strength percentage to descriptive text
+        
+        Args:
+            strength: Strength value 0.0-1.0
+            
+        Returns:
+            Descriptive text
+        """
+        if strength >= 0.8:
+            return "Rất mạnh"
+        elif strength >= 0.7:
+            return "Mạnh"
+        elif strength >= 0.6:
+            return "Khá"
+        elif strength >= 0.5:
+            return "Trung bình"
+        elif strength >= 0.4:
+            return "Yếu"
+        else:
+            return "Rất yếu"
+    
     def _format_basic_alert_message(self, pattern: Dict[str, Any]) -> str:
         """
-        Format basic pattern alert message (original format)
+        Format basic pattern alert message (fallback for non-enhanced patterns)
         
         Args:
             pattern: Basic pattern detection result
@@ -256,79 +336,45 @@ class TelegramNotifier:
         timeframe = pattern.get('timeframe', 'Unknown')
         candle_close = pattern.get('candle_close', 0)
         strength = pattern.get('strength', 0)
-        candle_time = pattern.get('candle_time')
         
-        # Translate pattern names to Vietnamese
+        # Vietnamese pattern names
         pattern_names_vn = {
             'Bullish Engulfing': 'Nến Nhấn Chìm Tăng',
             'Bearish Engulfing': 'Nến Nhấn Chìm Giảm',
-            'Hammer': 'Búa (Hammer)',
-            'Shooting Star': 'Sao Băng (Shooting Star)',
-            'Doji': 'Doji',
-            'Morning Star': 'Sao Mai (Morning Star)',
-            'Evening Star': 'Sao Hôm (Evening Star)'
+            'Hammer': 'Búa',
+            'Shooting Star': 'Sao Băng',
+            'Doji': 'Doji'
         }
-        
         pattern_name_vn = pattern_names_vn.get(pattern_name, pattern_name)
         
-        # Determine signal type
+        # Signal header
         if pattern_type == 'bullish':
-            signal_header = "🟢📈 *TÍN HIỆU TĂNG*"
-            trend_note = "Khả năng đảo chiều tăng"
+            signal_header = "🟢 *TÍN HIỆU TĂNG* 📈"
         elif pattern_type == 'bearish':
-            signal_header = "🔴📉 *TÍN HIỆU GIẢM*"
-            trend_note = "Khả năng đảo chiều giảm"
+            signal_header = "🔴 *TÍN HIỆU GIẢM* 📉"
         else:
-            signal_header = "⚪️ *TÍN HIỆU TRUNG LẬP*"
-            trend_note = "Thị trường đang phân vân"
+            signal_header = "⚪️ *TÍN HIỆU Sideway* 😪"
         
-        # Format price based on symbol
-        if 'XAU' in symbol.upper() or 'GOLD' in symbol.upper():
-            # Gold typically has 2 decimal places
+        # Format price
+        if 'XAU' in symbol.upper():
             price_str = f"{candle_close:.2f}"
-        elif 'JPY' in symbol.upper():
-            # JPY pairs typically have 3 decimal places
-            price_str = f"{candle_close:.3f}"
         else:
-            # Most forex pairs have 5 decimal places
             price_str = f"{candle_close:.5f}"
         
-        # Clean symbol name (remove .s suffix if present)
-        clean_symbol = symbol.replace('.s', '')
-        
-        # Format timeframe
-        timeframe_vn = self._get_timeframe_vn(timeframe)
+        # Strength description
+        strength_desc = self._get_strength_description(strength)
         
         # Create message
-        message = f"""🚨 *CẢNH BÁO PRICE ACTION* 🚨
+        message = f"""🚨 *PRICE ACTION ALERT* 🚨
 
 {signal_header}
 
-📊 *Cặp tiền:* {clean_symbol}
-⏰ *Khung thời gian:* {timeframe_vn}
-🎯 *Mô hình:* {pattern_name_vn}
-💰 *Giá đóng cửa:* {price_str}
-💪 *Độ mạnh tín hiệu:* {strength:.0%}
+📊 **{symbol.replace('.s', '')} - {self._get_timeframe_vn(timeframe)}**
+🎯 **{pattern_name_vn}** | Giá: {price_str}
 
-📝 *Ghi chú:* {trend_note}
-⏱ *Thời gian:* {self._format_timestamp(candle_time)}
+💪 **Độ mạnh:** {strength:.0%} ({strength_desc})
 
-✅ _Nến đã đóng - Tín hiệu đã xác nhận_"""
-        
-        # Add special note for Doji subtype
-        if pattern_name == 'Doji' and 'subtype' in pattern:
-            doji_subtypes_vn = {
-                'dragonfly': 'Chuồn Chuồn (Dragonfly)',
-                'gravestone': 'Bia Mộ (Gravestone)',
-                'long_legged': 'Chân Dài (Long-legged)',
-                'standard': 'Chuẩn'
-            }
-            subtype = pattern['subtype']
-            subtype_vn = doji_subtypes_vn.get(subtype, subtype)
-            message = message.replace(
-                f"*Mô hình:* {pattern_name_vn}",
-                f"*Mô hình:* {pattern_name_vn} - {subtype_vn}"
-            )
+⏱ Thời gian: {self._format_timestamp(pattern.get('candle_time'))}"""
         
         return message.strip()
     
@@ -339,21 +385,21 @@ class TelegramNotifier:
         
         if pattern_type == 'bullish':
             if classification == 'trend_continuation':
-                return "🟢📈 *TÍN HIỆU TĂNG MẠNH* (Tiếp tục xu hướng)"
+                return "🟢 *TÍN HIỆU TĂNG MẠNH 📈* (Tiếp tục xu hướng)"
             elif classification == 'trend_reversal':
-                return "🟡📈 *TÍN HIỆU ĐẢO CHIỀU TĂNG* (Cần xác nhận)"
+                return "🟡 *TÍN HIỆU ĐẢO CHIỀU TĂNG 📈* (Cần xác nhận)"
             else:
                 return "🟢📈 *TÍN HIỆU TĂNG*"
         elif pattern_type == 'bearish':
             if classification == 'trend_continuation':
-                return "🔴📉 *TÍN HIỆU GIẢM MẠNH* (Tiếp tục xu hướng)"
+                return "🔴 *TÍN HIỆU GIẢM MẠNH 📉* (Tiếp tục xu hướng)"
             elif classification == 'trend_reversal':
-                return "🟡📉 *TÍN HIỆU ĐẢO CHIỀU GIẢM* (Cần xác nhận)"
+                return "🟡 *TÍN HIỆU ĐẢO CHIỀU GIẢM 📉* (Cần xác nhận)"
             else:
-                return "🔴📉 *TÍN HIỆU GIẢM*"
+                return "🔴 *TÍN HIỆU GIẢM 📉*"
         else:
-            return "⚪️ *TÍN HIỆU TRUNG LẬP*"
-    
+            return "⚪️ *TÍN HIỆU Sideway 😪*"
+
     def _get_timeframe_vn(self, timeframe: str) -> str:
         """Convert timeframe to Vietnamese"""
         return {
@@ -377,83 +423,32 @@ class TelegramNotifier:
         else:
             return str(candle_time) if candle_time else 'N/A'
     
-    def _get_pattern_emoji(self, pattern_type: str) -> str:
-        """Get emoji for pattern type"""
-        emojis = {
-            'bullish': '🟢',
-            'bearish': '🔴',
-            'neutral': '⚪'
-        }
-        return emojis.get(pattern_type, '📊')
+    # Keep other methods for compatibility
+    async def send_batch_alerts(self, patterns: List[Dict[str, Any]]) -> int:
+        """Send multiple alerts"""
+        if not patterns:
+            return 0
+        
+        success_count = 0
+        for pattern in patterns:
+            if await self.send_alert(pattern):
+                success_count += 1
+                await asyncio.sleep(0.5)
+        
+        return success_count
     
-    async def send_summary(self, stats: Dict[str, Any]) -> bool:
-        """
-        Send daily/periodic summary in Vietnamese
-        
-        Args:
-            stats: Pattern statistics
-            
-        Returns:
-            bool: Success status
-        """
-        if not self.bot:
-            return False
-        
+    def send_batch_alerts_sync(self, patterns: List[Dict[str, Any]]) -> int:
+        """Synchronous wrapper for send_batch_alerts"""
         try:
-            message = self._format_summary_message(stats)
-            
-            await self.bot.send_message(
-                chat_id=self.chat_id,
-                text=message,
-                parse_mode='Markdown'
-            )
-            
-            return True
-            
-        except Exception as e:
-            logger.error(f"Error sending summary: {e}")
-            return False
-    
-    def _format_summary_message(self, stats: Dict[str, Any]) -> str:
-        """Format summary message in Vietnamese"""
-        total = stats.get('total', 0)
-        by_pattern = stats.get('by_pattern', {})
-        by_type = stats.get('by_type', {})
-        avg_strength = stats.get('avg_strength', 0)
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
         
-        message = f"""
-📈 *BÁO CÁO TỔNG KẾT PHÂN TÍCH*
-
-*Tổng số mô hình phát hiện:* {total}
-*Độ mạnh trung bình:* {avg_strength:.1%}
-
-*Phân loại theo xu hướng:*
-"""
-        
-        type_names_vn = {
-            'bullish': 'Tăng',
-            'bearish': 'Giảm',
-            'neutral': 'Trung lập'
-        }
-        
-        for ptype, count in by_type.items():
-            emoji = self._get_pattern_emoji(ptype)
-            type_vn = type_names_vn.get(ptype, ptype.capitalize())
-            message += f"{emoji} {type_vn}: {count}\n"
-        
-        message += "\n*Phân loại theo mô hình:*\n"
-        for pattern, count in by_pattern.items():
-            message += f"• {pattern}: {count}\n"
-        
-        return message.strip()
+        return loop.run_until_complete(self.send_batch_alerts(patterns))
     
     async def test_connection(self) -> bool:
-        """
-        Test Telegram bot connection
-        
-        Returns:
-            bool: Connection status
-        """
+        """Test Telegram bot connection"""
         if not self.bot:
             return False
         
@@ -461,14 +456,13 @@ class TelegramNotifier:
             bot_info = await self.bot.get_me()
             logger.info(f"Telegram bot connected: @{bot_info.username}")
             
-            # Send test message in Vietnamese
+            # Send test message
             await self.bot.send_message(
                 chat_id=self.chat_id,
                 text=(
                     "💠 *ForgeX Bot v0.0.2 đã sẵn sàng!* 🤖\n\n"
                     "✅ *Kết nối:* Thành công\n"
-                    "📊 *Trạng thái:* Đang bắt đầu quét thị trường...\n"
-                    "🚀 *Tính năng mới:* Phân tích ngữ cảnh nâng cao"
+                    "📊 *Trạng thái:* Đang quét thị trường...\n"
                 ),
                 parse_mode="Markdown"
             )
@@ -490,20 +484,11 @@ class TelegramNotifier:
         return loop.run_until_complete(self.test_connection())
     
     async def send_shutdown_notification(self, stats: Dict[str, Any] = None) -> bool:
-        """
-        Send bot shutdown notification in Vietnamese
-        
-        Args:
-            stats: Optional runtime statistics
-            
-        Returns:
-            bool: Success status
-        """
+        """Send bot shutdown notification"""
         if not self.bot:
             return False
         
         try:
-            # Get current Vietnam time for shutdown notification
             shutdown_time = datetime.now(self.timezone)
             formatted_time = shutdown_time.strftime('%H:%M - %d/%m/%Y')
             
