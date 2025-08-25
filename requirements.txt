@@ -1,14 +1,14 @@
 # ForgeX Bot - Production Dependencies
-# Core trading and analysis
+# Core trading and MT5
 MetaTrader5==5.0.45
 pandas==2.0.3
-numpy<2.0.0  # MT5 compatibility
+numpy==1.24.3
 pyyaml==6.0.1
 
 # Telegram notifications
 python-telegram-bot==20.3
 
-# Chart generation
+# Chart generation and visualization
 matplotlib==3.7.2
 
 # Utilities
@@ -18,3 +18,8 @@ pytz==2023.3
 
 # Optional: Technical Analysis
 # TA-Lib==0.4.28  # Uncomment if TA-Lib is installed
+
+# Development dependencies (optional)
+# pytest==7.4.0
+# black==23.3.0
+# flake8==6.0.0

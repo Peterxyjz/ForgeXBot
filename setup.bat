@@ -1,36 +1,43 @@
 @echo off
-echo =====================================
-echo   ForgeX Bot - Clean Setup
-echo =====================================
-echo.
+echo ================================
+echo   ForgeX Bot Setup Script
+echo ================================
 
-REM Remove old venv
-if exist "venv" (
-    echo Removing old virtual environment...
-    rmdir /s /q venv
+echo Step 1: Creating virtual environment...
+python -m venv venv
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to create virtual environment
+    pause
+    exit /b 1
 )
 
-REM Create fresh venv
-echo Creating fresh virtual environment...
-python -m venv venv
+echo Step 2: Activating virtual environment...
 call venv\Scripts\activate.bat
 
-REM Upgrade pip
-python -m pip install --upgrade pip --quiet
+echo Step 3: Installing dependencies...
+pip install -r requirements.txt
+if %errorlevel% neq 0 (
+    echo ERROR: Failed to install dependencies
+    pause
+    exit /b 1
+)
 
-REM Install compatible numpy first
-echo Installing compatible NumPy...
-pip install "numpy<2.0.0" --quiet
-
-REM Install all dependencies
-echo Installing dependencies...
-pip install -r requirements.txt --quiet
+echo Step 4: Creating .env file...
+if not exist .env (
+    copy .env.example .env
+    echo .env file created from template
+) else (
+    echo .env file already exists
+)
 
 echo.
-echo =====================================
+echo ================================
 echo   Setup completed successfully!
-echo   Run: run_bot.bat
-echo =====================================
-
-deactivate
+echo ================================
+echo.
+echo Next steps:
+echo 1. Edit .env file with your credentials
+echo 2. Run: python main.py --test
+echo 3. Run: python main.py
+echo.
 pause
