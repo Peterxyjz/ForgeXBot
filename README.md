@@ -4,7 +4,7 @@ Bot tự động phân tích price action trên MetaTrader 5 và gửi cảnh b�
 
 ## 📦 Repository
 
-**GitHub:** https://github.com/Peterxyjz/bot_moi.git
+**GitHub:** https://github.com/Peterxyjz/ForgeXBot.git
 
 ```bash
 # Clone repository
@@ -23,7 +23,7 @@ cd bot_moi
 
 ```bash
 # Clone repository
-git clone https://github.com/Peterxyjz/bot_moi.git
+git clone https://github.com/Peterxyjz/ForgeXBot.git
 cd bot_moi
 
 # Auto setup
