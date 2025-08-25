@@ -9,6 +9,7 @@ import logging
 from ..patterns.pattern_manager import PatternManager
 from .trend_analyzer import TrendAnalyzer, TrendDirection
 from .support_resistance import SupportResistanceAnalyzer
+from .strength_calculator import StrengthCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class EnhancedPatternManager(PatternManager):
         analysis_config = config.get('analysis', {})
         self.trend_analyzer = TrendAnalyzer(analysis_config.get('trend', {}))
         self.sr_analyzer = SupportResistanceAnalyzer(analysis_config.get('support_resistance', {}))
+        self.strength_calculator = StrengthCalculator(config)
         
         # Context filtering settings
         self.enable_trend_filtering = analysis_config.get('enable_trend_filtering', True)
@@ -141,9 +143,21 @@ class EnhancedPatternManager(PatternManager):
         # Determine pattern classification
         pattern['classification'] = self._classify_pattern_by_context(pattern, trend_analysis)
         
-        # Calculate enhanced strength
+        # Calculate enhanced strength using StrengthCalculator
         pattern['original_strength'] = pattern.get('strength', 0.5)
-        pattern['enhanced_strength'] = self._calculate_enhanced_strength(pattern, trend_analysis, sr_context)
+        
+        # Get S/R levels for strength calculation
+        sr_levels = [level['price'] for level in sr_analysis.get('levels', [])]
+        
+        # Calculate enhanced strength
+        strength_result = self.strength_calculator.calculate_enhanced_strength(
+            candles_with_indicators,
+            pattern,
+            sr_levels
+        )
+        
+        pattern['enhanced_strength'] = strength_result['total_strength']
+        pattern['strength_breakdown'] = strength_result
         pattern['strength'] = pattern['enhanced_strength']
         
         # Add candle index for reference

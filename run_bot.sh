@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "====================================="
-echo "  MT5 Price Action Bot - Linux/Mac"
+echo "  ForgeX Bot - Linux/Mac"
 echo "====================================="
 echo
 
@@ -41,7 +41,7 @@ if ! pip show MetaTrader5 &> /dev/null; then
 fi
 
 # Run the bot
-echo "Starting MT5 Price Action Bot..."
+echo "Starting ForgeX Bot..."
 echo "Press Ctrl+C to stop the bot"
 echo
 python main.py "$@"

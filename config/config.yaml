@@ -10,6 +10,8 @@ mt5:
 # Trading Symbols
 symbols:
   - XAUUSD.s # Vàng
+  - EURUSD.s # Euro/USD
+  - GBPUSD.s # Bảng Anh/USD
   # - USDJPY.s   # USD/Yên Nhật
   # - AUDUSD.s   # Đô Úc/USD
 
@@ -26,6 +28,7 @@ telegram:
   #   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
   bot_token: "" # (override via TELEGRAM_BOT_TOKEN)
   chat_id: "" # (override via TELEGRAM_CHAT_ID)
+  send_charts: true # Send charts with alerts (requires matplotlib)
 
 # Pattern Detection Settings
 patterns:
@@ -40,7 +43,7 @@ patterns:
   doji_threshold: 0.1 # 10% body/range ratio for doji (unchanged)
   min_strength: 0.6 # Tăng lên 60% để giảm tín hiệu nhiễu
   min_enhanced_strength: 0.4 # Ngưỡng tối thiểu cho enhanced patterns
-  
+
   # NOTE: hammer_shadow_ratio and shooting_star_shadow_ratio removed
   # Algorithm now uses fixed 25% body threshold and 10% shadow limits
 
@@ -48,20 +51,20 @@ patterns:
 analysis:
   # Enable enhanced pattern detection with context
   enable_enhanced_mode: true
-  
+
   # Trend Analysis
   trend:
     ema_short_period: 20
     ema_long_period: 50
-    trend_strength_threshold: 0.0001  # 0.01%
-    sideways_threshold: 0.0005       # 0.05%
-  
-  # Support/Resistance Analysis  
+    trend_strength_threshold: 0.0001 # 0.01%
+    sideways_threshold: 0.0005 # 0.05%
+
+  # Support/Resistance Analysis
   support_resistance:
     sr_lookback_periods: 20
     sr_min_touches: 2
-    sr_proximity_threshold: 0.001    # 0.1%
-  
+    sr_proximity_threshold: 0.001 # 0.1%
+
   # Context Filtering
   enable_trend_filtering: true
   enable_sr_filtering: true

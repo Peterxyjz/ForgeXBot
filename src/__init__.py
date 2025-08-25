@@ -1,5 +1,5 @@
 """
-MT5 Price Action Bot
+ForgeX Bot
 A sophisticated trading bot for detecting price action patterns
 """
 

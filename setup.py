@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Setup script for MT5 Price Action Bot
+Setup script for ForgeX Bot
 Helps with initial configuration and dependency installation
 """
 
@@ -121,7 +121,7 @@ def test_imports():
 def main():
     """Main setup function"""
     print("=" * 50)
-    print("    MT5 Price Action Bot - Setup Script")
+    print("    ForgeX Bot - Setup Script")
     print("=" * 50)
     
     # Check Python version
