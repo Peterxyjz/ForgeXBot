@@ -263,17 +263,19 @@ class TelegramNotifier:
                 message += f"└ Gần Resistance: {sr_context.get('resistance_level', 'N/A')}\n"
             message += "\n"
         
-        # Thời gian
-        message += f"🕐 *Thời gian:* {formatted_time}\n\n"
+        
         
         # Gợi ý giao dịch dựa trên pattern type
         pattern_type = pattern.get('type', 'neutral')
         if pattern_type == 'bullish':
-            message += "📈 *Gợi ý:* Cân nhắc vị thế LONG\n"
+            message += "📈 *Gợi ý:* Cân nhắc vị thế LONG\n\n"
         elif pattern_type == 'bearish':
-            message += "📉 *Gợi ý:* Cân nhắc vị thế SHORT\n"
+            message += "📉 *Gợi ý:* Cân nhắc vị thế SHORT\n\n"
         else:
-            message += "⚖️ *Gợi ý:* Chờ hướng rõ ràng\n"
+            message += "⚖️ *Gợi ý:* Chờ hướng rõ ràng\n\n"
+
+        # Thời gian
+        message += f"🕐 *Thời gian:* {formatted_time}\n"
         
         return message
     
