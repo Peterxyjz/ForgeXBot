@@ -247,6 +247,9 @@ class PriceActionBot:
                             
                             if patterns:
                                 logger.info(f"✅ Found {len(patterns)} patterns on {symbol} {timeframe}")
+                                # Store candles for chart generation
+                                for pattern in patterns:
+                                    pattern['_candles'] = candles
                                 all_patterns.extend(patterns)
                             else:
                                 logger.info(f"No patterns found on {symbol} {timeframe}")
@@ -291,9 +294,10 @@ class PriceActionBot:
                     logger.debug(f"Skipping duplicate alert for {pattern['pattern']} on {pattern['symbol']}")
                     continue
                 
-                # Send alert
+                # Send alert with chart data
                 if self.telegram_notifier:
-                    if self.telegram_notifier.send_alert_sync(pattern):
+                    candles = pattern.get('_candles')
+                    if self.telegram_notifier.send_alert_sync(pattern, candles):
                         alerts_sent += 1
                         # Add to cache
                         self.alert_cache.add_alert(pattern)
@@ -347,6 +351,16 @@ class PriceActionBot:
         logger.info(f"Monitoring symbols: {self.config.get('symbols')}")
         logger.info(f"Timeframes: {self.config.get('timeframes')}")
         logger.info(f"Patterns: {self.pattern_manager.get_enabled_patterns()}")
+        
+        # Gửi thông báo khởi động qua Telegram
+        if self.telegram_notifier:
+            bot_info = {
+                'symbols': self.config.get('symbols', []),
+                'timeframes': self.config.get('timeframes', []),
+                'patterns': self.pattern_manager.get_enabled_patterns(),
+                'enhanced_mode': hasattr(self, 'enhanced_mode') and self.enhanced_mode
+            }
+            self.telegram_notifier.send_startup_notification_sync(bot_info)
         
         # Use instance variables for statistics
         self.scan_count = 0
@@ -476,7 +490,7 @@ def main():
     """Main entry point"""
     import argparse
     
-    parser = argparse.ArgumentParser(description='MT5 Price Action Bot')
+    parser = argparse.ArgumentParser(description='ForgeX Bot')
     parser.add_argument(
         '--config',
         type=str,

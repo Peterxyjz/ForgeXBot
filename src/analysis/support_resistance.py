@@ -31,263 +31,205 @@ class SupportResistanceAnalyzer:
         Find pivot highs and lows
         
         Args:
-            candles: OHLCV data
+            candles: DataFrame with OHLC data
             window: Window size for pivot detection
             
         Returns:
             Dictionary with pivot highs and lows
         """
-        highs = candles['high'].values
-        lows = candles['low'].values
-        times = candles.index.values if hasattr(candles.index, 'values') else range(len(candles))
+        if len(candles) < window * 2 + 1:
+            return {'highs': [], 'lows': []}
         
-        pivot_highs = []
-        pivot_lows = []
+        highs = []
+        lows = []
         
-        for i in range(window, len(highs) - window):
+        for i in range(window, len(candles) - window):
             # Check for pivot high
+            current_high = candles.iloc[i]['high']
             is_pivot_high = True
+            
             for j in range(i - window, i + window + 1):
-                if j != i and highs[j] >= highs[i]:
+                if j != i and candles.iloc[j]['high'] >= current_high:
                     is_pivot_high = False
                     break
             
             if is_pivot_high:
-                pivot_highs.append({
+                highs.append({
                     'index': i,
-                    'time': times[i],
-                    'price': highs[i],
-                    'type': 'resistance'
+                    'price': current_high,
+                    'time': candles.iloc[i]['time']
                 })
             
             # Check for pivot low
+            current_low = candles.iloc[i]['low']
             is_pivot_low = True
+            
             for j in range(i - window, i + window + 1):
-                if j != i and lows[j] <= lows[i]:
+                if j != i and candles.iloc[j]['low'] <= current_low:
                     is_pivot_low = False
                     break
             
             if is_pivot_low:
-                pivot_lows.append({
+                lows.append({
                     'index': i,
-                    'time': times[i],
-                    'price': lows[i],
-                    'type': 'support'
+                    'price': current_low,
+                    'time': candles.iloc[i]['time']
                 })
         
-        return {
-            'pivot_highs': pivot_highs,
-            'pivot_lows': pivot_lows
-        }
-    
-    def cluster_levels(self, levels: List[Dict], current_price: float) -> List[Dict]:
-        """
-        Cluster nearby support/resistance levels
-        
-        Args:
-            levels: List of support/resistance levels
-            current_price: Current market price
-            
-        Returns:
-            Clustered levels
-        """
-        if not levels:
-            return []
-        
-        # Sort levels by price
-        sorted_levels = sorted(levels, key=lambda x: x['price'])
-        clustered = []
-        
-        for level in sorted_levels:
-            # Check if this level is close to any existing cluster
-            merged = False
-            threshold = current_price * self.proximity_threshold
-            
-            for cluster in clustered:
-                if abs(level['price'] - cluster['price']) <= threshold:
-                    # Merge into existing cluster
-                    cluster['touches'] += level.get('touches', 1)
-                    cluster['strength'] = max(cluster['strength'], level.get('strength', 1))
-                    cluster['last_touch'] = max(cluster.get('last_touch', level['index']), level['index'])
-                    merged = True
-                    break
-            
-            if not merged:
-                # Create new cluster
-                clustered.append({
-                    'price': level['price'],
-                    'type': level['type'],
-                    'touches': level.get('touches', 1),
-                    'strength': level.get('strength', 1),
-                    'last_touch': level['index'],
-                    'distance_from_current': abs(level['price'] - current_price) / current_price
-                })
-        
-        return clustered
-    
-    def calculate_level_strength(self, level_price: float, candles: pd.DataFrame) -> Dict[str, Any]:
-        """
-        Calculate strength of a support/resistance level
-        
-        Args:
-            level_price: Price level to analyze
-            candles: OHLCV data
-            
-        Returns:
-            Level strength metrics
-        """
-        threshold = level_price * self.proximity_threshold
-        touches = 0
-        bounces = 0
-        breaks = 0
-        
-        for i in range(len(candles)):
-            candle = candles.iloc[i]
-            
-            # Check if price touched the level
-            if (candle['low'] <= level_price + threshold and 
-                candle['high'] >= level_price - threshold):
-                touches += 1
-                
-                # Check for bounce (close away from level)
-                if abs(candle['close'] - level_price) > threshold:
-                    bounces += 1
-                
-                # Check for break (close beyond level significantly)
-                if (candle['close'] > level_price + threshold * 2 or 
-                    candle['close'] < level_price - threshold * 2):
-                    breaks += 1
-        
-        # Calculate strength score
-        strength = touches * 0.3 + bounces * 0.5 - breaks * 0.2
-        strength = max(0, min(strength, 5))  # Normalize to 0-5
-        
-        return {
-            'touches': touches,
-            'bounces': bounces,
-            'breaks': breaks,
-            'strength': strength
-        }
+        return {'highs': highs, 'lows': lows}
     
     def find_support_resistance_levels(self, candles: pd.DataFrame) -> Dict[str, Any]:
         """
-        Find key support and resistance levels
+        Find support and resistance levels
         
         Args:
-            candles: OHLCV data
+            candles: DataFrame with OHLC data
             
         Returns:
             Support and resistance analysis
         """
         if len(candles) < self.lookback_periods:
-            return {
-                'support_levels': [],
-                'resistance_levels': [],
-                'nearest_support': None,
-                'nearest_resistance': None
-            }
+            return {'levels': [], 'support_levels': [], 'resistance_levels': []}
         
-        # Use recent data
+        # Use recent candles for analysis
         recent_candles = candles.tail(self.lookback_periods)
-        current_price = recent_candles.iloc[-1]['close']
         
         # Find pivot points
         pivots = self.find_pivot_points(recent_candles)
         
-        # Process resistance levels (pivot highs)
-        resistance_candidates = []
-        for pivot in pivots['pivot_highs']:
-            strength_info = self.calculate_level_strength(pivot['price'], recent_candles)
-            if strength_info['touches'] >= self.min_touches:
-                resistance_candidates.append({
-                    'price': pivot['price'],
-                    'type': 'resistance',
-                    'index': pivot['index'],
-                    'touches': strength_info['touches'],
-                    'strength': strength_info['strength']
-                })
+        # Group similar price levels
+        resistance_levels = self._group_price_levels([p['price'] for p in pivots['highs']])
+        support_levels = self._group_price_levels([p['price'] for p in pivots['lows']])
         
-        # Process support levels (pivot lows)
-        support_candidates = []
-        for pivot in pivots['pivot_lows']:
-            strength_info = self.calculate_level_strength(pivot['price'], recent_candles)
-            if strength_info['touches'] >= self.min_touches:
-                support_candidates.append({
-                    'price': pivot['price'],
-                    'type': 'support',
-                    'index': pivot['index'],
-                    'touches': strength_info['touches'],
-                    'strength': strength_info['strength']
-                })
-        
-        # Cluster nearby levels
-        resistance_levels = self.cluster_levels(resistance_candidates, current_price)
-        support_levels = self.cluster_levels(support_candidates, current_price)
-        
-        # Sort by distance from current price
-        resistance_levels.sort(key=lambda x: x['distance_from_current'])
-        support_levels.sort(key=lambda x: x['distance_from_current'])
-        
-        # Find nearest levels
-        nearest_resistance = None
-        nearest_support = None
+        # Combine all levels
+        all_levels = []
         
         for level in resistance_levels:
-            if level['price'] > current_price:
-                nearest_resistance = level
-                break
+            all_levels.append({
+                'price': level['price'],
+                'type': 'resistance',
+                'touches': level['count'],
+                'strength': self._calculate_level_strength(level, recent_candles)
+            })
         
         for level in support_levels:
-            if level['price'] < current_price:
-                nearest_support = level
-                break
+            all_levels.append({
+                'price': level['price'],
+                'type': 'support',
+                'touches': level['count'],
+                'strength': self._calculate_level_strength(level, recent_candles)
+            })
+        
+        # Filter by minimum touches
+        significant_levels = [l for l in all_levels if l['touches'] >= self.min_touches]
         
         return {
-            'support_levels': support_levels[:5],  # Top 5 support levels
-            'resistance_levels': resistance_levels[:5],  # Top 5 resistance levels
-            'nearest_support': nearest_support,
-            'nearest_resistance': nearest_resistance,
-            'current_price': current_price
+            'levels': significant_levels,
+            'support_levels': [l['price'] for l in significant_levels if l['type'] == 'support'],
+            'resistance_levels': [l['price'] for l in significant_levels if l['type'] == 'resistance']
         }
+    
+    def _group_price_levels(self, prices: List[float]) -> List[Dict]:
+        """Group similar price levels together"""
+        if not prices:
+            return []
+        
+        grouped = []
+        sorted_prices = sorted(prices)
+        
+        current_group = [sorted_prices[0]]
+        
+        for i in range(1, len(sorted_prices)):
+            price = sorted_prices[i]
+            group_avg = sum(current_group) / len(current_group)
+            
+            # Check if price is within threshold of current group
+            if abs(price - group_avg) / group_avg <= self.proximity_threshold:
+                current_group.append(price)
+            else:
+                # Finalize current group
+                if len(current_group) >= 1:
+                    grouped.append({
+                        'price': sum(current_group) / len(current_group),
+                        'count': len(current_group),
+                        'prices': current_group
+                    })
+                
+                # Start new group
+                current_group = [price]
+        
+        # Add last group
+        if len(current_group) >= 1:
+            grouped.append({
+                'price': sum(current_group) / len(current_group),
+                'count': len(current_group),
+                'prices': current_group
+            })
+        
+        return grouped
+    
+    def _calculate_level_strength(self, level: Dict, candles: pd.DataFrame) -> float:
+        """Calculate strength of support/resistance level"""
+        # Base strength from number of touches
+        base_strength = min(level['count'] / 5.0, 1.0)  # Max at 5 touches
+        
+        # Bonus for recent touches
+        level_price = level['price']
+        recent_touches = 0
+        
+        # Check last 10 candles for proximity
+        for _, candle in candles.tail(10).iterrows():
+            high = candle['high']
+            low = candle['low']
+            
+            # Check if candle touched the level
+            if low <= level_price <= high:
+                distance = min(abs(high - level_price), abs(low - level_price))
+                if distance / level_price <= self.proximity_threshold:
+                    recent_touches += 1
+        
+        recent_bonus = min(recent_touches / 3.0, 0.3)  # Max 30% bonus
+        
+        return min(base_strength + recent_bonus, 1.0)
     
     def get_sr_context_for_pattern(self, pattern_price: float, sr_analysis: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Get support/resistance context for a pattern
+        Get S/R context for a specific pattern price
         
         Args:
-            pattern_price: Price where pattern occurred
-            sr_analysis: Support/resistance analysis
+            pattern_price: Price of the pattern
+            sr_analysis: Support/resistance analysis result
             
         Returns:
-            Context information
+            S/R context dictionary
         """
-        current_price = sr_analysis['current_price']
-        proximity_threshold = current_price * self.proximity_threshold * 2  # Wider threshold for patterns
-        
-        # Check proximity to support/resistance levels
-        near_resistance = False
-        near_support = False
-        
-        resistance_distance = float('inf')
-        support_distance = float('inf')
-        
-        # Check nearest resistance
-        if sr_analysis['nearest_resistance']:
-            resistance_distance = abs(pattern_price - sr_analysis['nearest_resistance']['price'])
-            if resistance_distance <= proximity_threshold:
-                near_resistance = True
-        
-        # Check nearest support
-        if sr_analysis['nearest_support']:
-            support_distance = abs(pattern_price - sr_analysis['nearest_support']['price'])
-            if support_distance <= proximity_threshold:
-                near_support = True
-        
-        return {
-            'near_resistance': near_resistance,
-            'near_support': near_support,
-            'resistance_distance': resistance_distance / current_price if resistance_distance != float('inf') else None,
-            'support_distance': support_distance / current_price if support_distance != float('inf') else None,
-            'nearest_resistance': sr_analysis['nearest_resistance'],
-            'nearest_support': sr_analysis['nearest_support']
+        context = {
+            'near_support': False,
+            'near_resistance': False,
+            'support_level': None,
+            'resistance_level': None,
+            'closest_level': None,
+            'distance_to_closest': float('inf')
         }
+        
+        levels = sr_analysis.get('levels', [])
+        
+        for level in levels:
+            level_price = level['price']
+            distance = abs(pattern_price - level_price) / pattern_price
+            
+            # Check if within proximity threshold
+            if distance <= self.proximity_threshold:
+                if level['type'] == 'support':
+                    context['near_support'] = True
+                    context['support_level'] = level_price
+                elif level['type'] == 'resistance':
+                    context['near_resistance'] = True
+                    context['resistance_level'] = level_price
+            
+            # Track closest level
+            if distance < context['distance_to_closest']:
+                context['distance_to_closest'] = distance
+                context['closest_level'] = level_price
+        
+        return context
