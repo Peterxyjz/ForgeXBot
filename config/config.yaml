@@ -12,8 +12,7 @@ symbols:
   - XAUUSD.s # Vàng
   - EURUSD.s # Euro/USD
   - GBPUSD.s # Bảng Anh/USD
-  # - USDJPY.s   # USD/Yên Nhật
-  # - AUDUSD.s   # Đô Úc/USD
+  - USDJPY.s # USD/Yên Nhật
 
 # Timeframes to scan (in MT5 format)
 timeframes:
@@ -91,5 +90,5 @@ risk:
   max_alerts_per_hour: 20
   quiet_hours:
     enabled: true
-    start: "23:00" # Không gửi alert từ 23h
+    start: "03:00" # Không gửi alert từ 23h
     end: "06:00" # đến 6h sáng
